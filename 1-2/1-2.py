@@ -1,5 +1,5 @@
 from Matrix import TriMatrix, Vector
-
+import csv
 import numpy as np
 
 
@@ -31,15 +31,15 @@ if __name__ == '__main__':
         matr_reader = csv.reader(mfile, delimiter=' ')
         for line in matr_reader:
             print(line)
-            line = [float(x) for x in line]
+            line = np.array([float(x) for x in line])
             if matrix is None:
-                matrix = [line]
+                matrix = np.array([line])
             else:
-                matrix.append(line)
+                np.vstack([matrix, line])
 
         matrix[0] = [0] + matrix[0]  
         matrix[-1] = matrix[-1] + [0]      
-        matrix = TriMatrix(matrix)
+
         print(matrix)
 
 
