@@ -1,4 +1,5 @@
 from functools import reduce
+from copy import deepcopy
 
 class MyException(Exception):
     pass
@@ -24,8 +25,10 @@ class Vector:
         for i in range(self.size):
             if i != 0:
                 mstr += ' '
-            mstr += str(self.data[i])
+            mstr += str(round(self.data[i],2))
         return mstr + ']'
+    def __len__(self):
+        return len(self.data)
 
 
 class Matrix:
@@ -72,8 +75,10 @@ class Matrix:
     def lu_decompose(self):
         assert self.size[0] == self.size[1]
         size = self.size[0]
-        LU = self.data.copy()
+        LU = deepcopy(self.data)
         P = Matrix.eye(len(LU))
+
+        self.detcount = 0
 
         # k - эпоха прохода по матрице - ступени
         for k in range(size - 1):
@@ -81,49 +86,57 @@ class Matrix:
             if k != row:
                 LU[k], LU[row] = LU[row], LU[k]
                 P[k], P[row] = P[row], P[k]
+                self.detcount+=1
             # j - изменяемые строки
             for j in range(k + 1, size):
                 LU[j][k] /= LU[k][k]
                 # i - изменяемые столбцы
                 for i in range(k + 1, size):
                     LU[j][i] -= LU[j][k] * LU[k][i]
-        self.LU = LU
-        self.P = P
-        return LU, P
+        
+        return Matrix(LU), P
 
 
-    def lu_solve(self, vect):
+    def lu_solve(self, LU, P, vect):
         assert type(vect) == Vector
+        size = len(LU.data)
         # первая часть Ly = Pb
-        Pb = self.P * vect
+        if P is None:
+            P = self.eye(size)
+        Pb = P * vect
         y = list([Pb[0]])
 
-        for i in range(1, self.size[0]):
-            l = self.LU[i][0:i]
+        for i in range(1, size):
+            l = LU[i][0:i]
             y.append(Pb[i] - sum(a * b for a, b in zip(y, l)))
 
         # вторая часть
-        x = list([y[self.size[0]-1]/self.LU[self.size[0]-1][self.size[0]-1]])
-        for i in range(self.size[0]-2, -1, -1):
-            l = self.LU[i][i+1:]
-            x.insert(0, (y[i] - sum(a * b for a, b in zip(x, l)))/self.LU[i][i])
+        x = list([y[size-1]/LU[size-1][size-1]])
+        for i in range(size-2, -1, -1):
+            l = LU[i][i+1:]
+            x.insert(0, (y[i] - sum(a * b for a, b in zip(x, l)))/LU[i][i])
 
         return Vector(x)
 
-    def lu_det(self):
-        return reduce(lambda x, y: x * y, [self.LU[i][i] for i in range(self.size[0])])
+    def lu_det(self, LU):
+        k = 1
+        size = len(LU.data)
+        if self.detcount%2 != 0:
+            k = -1
+        return k * reduce(lambda x, y: x * y, [LU[i][i] for i in range(size)])
 
-    def lu_inverse(self):
-        E = self.eye(self.size[0])
+    def lu_inverse(self, LU, P):
+        size = len(LU.data)
+        E = self.eye(size)
         x = []
         for row in E:
-            x.append(self.lu_solve(row))
+            x.append(self.lu_solve(LU, P, Vector(row)))
         res = Matrix(x)
         res.transpose()
         return res
 
     def transpose(self):
-        pass
+        self.data = [list(i) for i in zip(*self.data)]
 
     def __getitem__(self, item):
         return self.data[item]
@@ -169,7 +182,7 @@ class Matrix:
                 mstr += ' '
             mstr += '['
             for j in range(self.size[1]):
-                mstr += str(self.data[i][j])
+                mstr += str(round(self.data[i][j],2))
                 if j != self.size[1] - 1:
                     mstr += ' '
             mstr += ']\n'
@@ -180,21 +193,27 @@ class Matrix:
         return Matrix([[1 if i == j else 0 for j in range(num)] for i in range(num)])
 
 
-a = Matrix([[1, 2, 3], [5, 2, 3], [1, 3, 9]])
-b = Matrix([[3, 2, 1], [3, 2, 1], [3, 2, 1]])
+class TriMatrix:
+    def __init__(self):
+        self.a = []
+        self.b = []
+        self.c = []
 
+    def __len__(self):
+        return len(self.b)
 
-print()
-a.lu_decompose()
-print(a.LU)
-print()
-print(a.P)
-print(a.lu_solve(Vector([1, 2, 3])))
-print(a.lu_det())
-print()
+    def __repr__(self):
+        res = '\n'
+        res += str(self.b[0]) + ' ' + str(self.c[0]) + '\n'
+        for i in range(1, len(self) - 1):
+            res += str(self.a[i]) + ' ' + str(self.b[i]) + ' ' + str(self.c[i]) + '\n'
+        res += str(self.a[-1]) + ' ' + str(self.b[-1]) +'\n'
+        return res
 
-
-
+    def debug_print(self, D):
+        for i in range(len(self)):
+            print("{0} {1} {2} {3}".format(self.a[i], 
+                self.b[i], self.c[i], D[i]))
 
 
 
