@@ -2,65 +2,52 @@ from Matrix import TriMatrix, Vector
 import csv
 import numpy as np
 
-
-def tma(mat, D):
-    sz = len(mat)
-    x = Vector(sz)
-    p, q = [], []
-    p.append(-mat.c[0] / mat.b[0])
-    q.append(D[0] / mat.b[0])
-
-    for i in range(1, sz):
-        p_i = 0 if i == sz - 1 else (-mat.c[i] / (mat.b[i] + mat.a[i] * p[i - 1]))
-        q_i = (D[i] - mat.a[i] * q[i - 1]) / (mat.b[i] + mat.a[i] * p[i - 1])
-        p.append(p_i)
-        q.append(q_i)
-
-    x[sz - 1] = q[sz - 1]
-    for i in range(sz - 2, -1, -1):
-        x[i] = p[i] * x[i + 1] + q[i]
-
-    return x
-
-
 if __name__ == '__main__':
-    with open('m.csv', newline='') as mfile:
+    with open('m.csv', newline='') as mfile,\
+    open('b.csv', newline='') as vfile:
         matrix = None
         vector = []
 
         matr_reader = csv.reader(mfile, delimiter=' ')
         for line in matr_reader:
-            print(line)
-            line = np.array([float(x) for x in line])
             if matrix is None:
-                matrix = np.array([line])
+                line = [0] + line
+                line = np.array([float(x) for x in line])
+                matrix = np.array(line)
             else:
-                np.vstack([matrix, line])
+                if len(line) == 2:
+                    line = line + [0]
+                line = np.array([float(x) for x in line])
+                matrix = np.vstack([matrix, line])
 
-        matrix[0] = [0] + matrix[0]  
-        matrix[-1] = matrix[-1] + [0]      
 
         print(matrix)
+        print('ok')
 
 
         vect_reader = csv.reader(vfile, delimiter=' ')
         for line in vect_reader:
-            line = [float(x) for x in line]
-            vector = line
-        vector = Vector(vector)
+            vector = np.array([float(x) for x in line])
+            
+        print(vector)
+        print('ok')
+        
+        P = np.array([-matrix[0][2]] / matrix[0][1])
+        Q = np.array([vector[0] / matrix[0][1]])
+        
+        for i in range(1, len(matrix)):
+            P = np.append(P, -matrix[i][2]/(matrix[i][1] + matrix[i][0]*P[P.size-1]))
+            Q = np.append(Q, (vector[i] - matrix[i][0]*Q[Q.size-1]) /(matrix[i][1]+matrix[i][0]*P[P.size-2]))
+
+        
+        x_rev = np.array([Q[Q.size-1]])
+        j = 1
+        for i in range(len(matrix), 0, -1):
+            x_rev = np.append(x_rev, P[P.size-j] * x_rev[x_rev.size-1] + Q[Q.size-j])
+            j+=1
+            
+        print(x_rev[::-1][:-1])
 
 
 
-
-    mat, D = TriMatrix(), Vector()
-    read_triagonal_matrix(args.input, mat, D)
-
-    logging.info("Input matrix:")
-    logging.info(mat)
-    logging.info("Input vector:")
-    logging.info(D)
-
-    x = tma(mat, D)
-    logging.info("Answer:")
-    logging.info(x)
-    save_to_file(args.output, X=x)
+   
